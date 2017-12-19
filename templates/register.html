@@ -1,0 +1,28 @@
+{% extends "main.html" %}
+{% block body %}
+
+	{% if session.logged_in %}
+		<h1>You're logged in !</h1>
+	{% else %}
+	<div class="container-fluid" id="login-container">
+		<div class="loginmodal-container">
+			<img src="/img/logo.png" alt="logo" class="embed-responsive">
+			<br />
+			<form method="post" action="register">
+				<input type="text" name="username" placeholder="Username...">
+				
+				{% if config.ASK_EMAIL_ADDRESS %}
+				<input type="email" name="email" placeholder="Email...">
+				{% endif %}
+
+
+				<input type="password" name="password" placeholder="Password...">
+				<input type="password" name="confirm_password" placeholder="Confirm password...">
+				{{ recaptcha }}
+				<input type="submit" name="login" class="login loginmodal-submit" value="Register">
+			</form>
+		</div>
+	</div>
+	{% endif %}
+
+{% endblock %}

@@ -1,19 +1,32 @@
-from flask import Flask, flash, redirect, render_template, request, session, abort
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
 
-app = Flask(__name__)
-  
+from flask import Flask, flash, redirect, render_template, request, session, abort
+from flask_recaptcha import ReCaptcha
+
+app = Flask(__name__,
+            static_url_path='', 
+            static_folder='static',
+            template_folder='templates')
+
+app.config.from_pyfile('config.py')
+recaptcha = ReCaptcha(app=app)
+
 @app.route("/")
 def index():
-    return "Flask App!"
+    return render_template('register.html')
 
 @app.route("/register")
 def register():
-    return render_template('main.html',name="main")
 
-def main():
-    print("Running server...")
-    app.run(host='localhost', port=1337)
-    print("Stopping...")
+    error = None
+
+    if not recaptcha.verify():
+        error = "Invalid Captcha"
+    
+
 
 if __name__ == "__main__":
-    main()
+    print("Running server " + app.config['WEBSITE_NAME'] + "...")
+    app.run(host='localhost', port=1337)
+    print("Stopping...")
