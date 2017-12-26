@@ -7,8 +7,16 @@ body {
     background: grey;
 }
 
+.row {
+   min-height: 160px;
+}
+
 #login-container {
     height: 100vh;
+}
+
+#login-container p {
+   text-align: center;
 }
 
 .loginmodal-container {
@@ -89,6 +97,12 @@ body {
     font-weight: 400;
     text-align: center;
     display: inline-block;
-    opacity: 0.6;
+/*    opacity: 0.6; */
     transition: opacity ease 0.5s;
+}
+
+.img-link {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
 }

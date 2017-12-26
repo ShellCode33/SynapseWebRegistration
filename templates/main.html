@@ -3,7 +3,7 @@
 	<head>
 		<title>{{ config.WEBSITE_NAME }} - Registration</title>
 		<!-- Required meta tags -->
-		<meta charset="utf-8">
+		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
 		<!-- Bootstrap CSS -->
@@ -12,11 +12,18 @@
 		<script src='https://www.google.com/recaptcha/api.js'></script>
 	</head>
 	<body>
-		{% block body %}{% endblock %}
+		<div class="container-fluid" id="login-container">
+			<div class="loginmodal-container">
+				<img src="/img/logo.png" alt="logo" class="embed-responsive">
+				{% block body %}{% endblock %}
+			</div>
+		</div>
 		<!-- Optional JavaScript -->
-		<!-- jQuery first, then Popper.js, then Bootstrap JS -->
-		<script src="/js/jquery-3.2.1.slim.min.js"></script>
+		<!-- jQuery first, then tether.js, then Popper.js, then Bootstrap JS -->
+		<script src="/js/jquery.min.js"></script>
+		<script src="/js/tether.min.js"></script>
 		<script src="/js/popper.min.js"></script>
 		<script src="/js/bootstrap.min.js"></script>
+		<script src="/js/main.js"></script>
 	</body>
 </html>

@@ -1,0 +1,29 @@
+{% extends "main.html" %}
+{% block body %}
+
+	{% if session.logged_in %}
+		<h1>You're logged in !</h1>
+	{% else %}
+		<h1>Thanks for registering</h1>
+		<p>Your request will be processed soon.</p>
+		<p>Here are suggested XMPP clients you may want to download :</p>
+
+		<div class="row">
+			<div class="col-6">
+				<a class="img-link" href="https://f-droid.org/en/packages/eu.siacs.conversations/"><img src="/img/fdroid.png" alt="fdroid" class="embed-responsive"></a>
+			</div>
+			<div class="col-6">
+				<a class="img-link" href="https://itunes.apple.com/us/app/chatsecure/id464200063"><img src="/img/ios.png" alt="ios" class="embed-responsive"></a>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-6">
+				<a class="img-link" href="https://gajim.org"><img src="/img/linux.png" alt="linux" class="embed-responsive"></a>
+			</div>
+			<div class="col-6">
+				<a class="img-link" href="https://gajim.org"><img src="/img/windows.png" alt="windows" class="embed-responsive"></a>
+			</div>
+		</div>
+	{% endif %}
+
+{% endblock %}
