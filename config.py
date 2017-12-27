@@ -1,11 +1,18 @@
+WEB_ROOT = "/var/www/html/ejabberd-web-registration/"
 WEBSITE_NAME = "WitchDoctors"
 ASK_EMAIL_ADDRESS = True
 EMAIL_ADDRESS_MENDATORY = False
 
+XMPP_HOST = "witchdoctors.fr"
+EJABBERD_CONFIG_FILE = "/etc/ejabberd/ejabberd.yml"
+
 # MySQL database configuration
-MYSQL_HOST = ""
-MYSQL_USER = "root"
-MYSQL_PASS = ""
+# By default, the web server will try to parse EJABBERD_CONFIG_FILE in order to retreive DB parameters 
+#MYSQL_HOST = ""
+#MYSQL_USER = "root"
+#MYSQL_PASSWORD = ""
+#MYSQL_DB = ""
+#MYSQL_PORT = 3306
 
 # ReCaptcha configuration
 RECAPTCHA_ENABLED = False
