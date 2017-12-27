@@ -42,5 +42,5 @@ sudo -H -u ejabberd ./main.py
 ```
 You can also run it in background like this :
 ```
-sudo -H -u ejabberd nohup ./main.py
+sudo -H -u ejabberd nohup ./main.py &
 ```
