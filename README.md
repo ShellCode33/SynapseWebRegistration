@@ -10,14 +10,30 @@ Your ejabberd installation has to use a MySQL database to run this application. 
 
 ## Dependencies
 First install the MySQL connector (MariaDB fork in this case). This is a debian installation using apt, but you can also install the appropriate package depending on your distribution.
-`sudo apt install python3-mysqldb libmariadbclient-dev #libmysqlclient-dev package for standard MySQL database`
+```
+sudo apt install python3-mysqldb libmariadbclient-dev #libmysqlclient-dev package for standard MySQL database
+```
+
 Python3 will need a few libraries to run this code
-`sudo -H -u ejabberd pip3 install flask`
-`sudo -H -u ejabberd pip3 install flask_recaptcha`
-`sudo -H -u ejabberd pip3 install flask-mysqldb`
+```
+sudo -H -u ejabberd pip3 install flask
+sudo -H -u ejabberd pip3 install flask_recaptcha
+sudo -H -u ejabberd pip3 install flask-mysqldb
+```
+
+## Prepare database
+You will have to create a table in order to store the users waiting for approval.
+To do so, please execute the following statement :
+```
+CREATE TABLE users_waiting_approval (username VARCHAR(100) NOT NULL PRIMARY KEY, password VARCHAR(128), email VARCHAR(200));
+```
 
 ## Running
 This is as simple as :
-`sudo -H -u ejabberd python3 index.py`
+```
+sudo -H -u ejabberd python3 index.py
+```
 You can also run it in background like this :
-`coming soon`
+```
+coming soon
+```
