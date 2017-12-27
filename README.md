@@ -28,12 +28,19 @@ To do so, please execute the following statement :
 CREATE TABLE users_waiting_approval (username VARCHAR(100) NOT NULL PRIMARY KEY, password VARCHAR(128) NOT NULL, email VARCHAR(200));
 ```
 
+## File permission
+The file `config.py` has to be owned by ejabberd because the application will overwrite this file.
+Please execute :
+```
+sudo chown ejabberd:ejabberd config.py
+```
+
 ## Running
 This is as simple as :
 ```
-sudo -H -u ejabberd python3 index.py
+sudo -H -u ejabberd ./main.py
 ```
 You can also run it in background like this :
 ```
-coming soon
+sudo -H -u ejabberd nohup ./main.py
 ```
