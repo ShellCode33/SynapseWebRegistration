@@ -35,7 +35,7 @@ function approve(username) {
 	  method: "GET",
 	  url: "/approve/" + username
 	}).done(function(data) {
-	  console.log("remove box")
+	  $("#user-" + username).remove()
 	});
 }
 
@@ -44,6 +44,6 @@ function deny(username) {
 	  method: "GET",
 	  url: "/deny/" + username
 	}).done(function(data) {
-	  console.log("remove box")
+	  $("#user-" + username).remove()
 	});
 }

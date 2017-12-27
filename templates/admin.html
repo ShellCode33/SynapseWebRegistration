@@ -2,7 +2,7 @@
 {% block body %}
 
 	{% for user in users %}
-	<div class="user-entry">
+	<div class="user-entry" id="user-{{ user[0] }}">
 		<strong>Username : </strong>{{ user[0] }}<br />
 		<strong>Email    : </strong>{{ user[1] }}<br />
 		<button onclick="approve('{{ user[0] }}')" type="button" class="btn btn-success">Approve</button>
