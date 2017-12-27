@@ -272,6 +272,11 @@ def change_config_values():
 
 
 if __name__ == "__main__":
+
+    if len(app.config['ADMIN_PASSWORD']) == 0:
+        print("Please choose an admin password.")
+        exit(1)
+
     parse_ejabberd_yml()
     change_config_values()
 
