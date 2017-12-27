@@ -97,17 +97,18 @@ def admin_login():
 
     error = None
 
-    if not recaptcha.verify():
-        error = "Invalid Captcha"
+    if request.method == "POST":
+        if not recaptcha.verify():
+            error = "Invalid Captcha"
 
-    elif request.method == "POST":
-        password = hashlib.sha512(request.form.get('password').encode("utf-8")).hexdigest()
-
-        if password == app.config["ADMIN_PASSWORD"]:
-            session['connected'] = 'ok'
-            return redirect("/admin", code=302)
         else:
-            error = "Wrong password"
+            password = hashlib.sha512(request.form.get('password').encode("utf-8")).hexdigest()
+
+            if password == app.config["ADMIN_PASSWORD"]:
+                session['connected'] = 'ok'
+                return redirect("/admin", code=302)
+            else:
+                error = "Wrong password"
 
     return render_template('admin_login.html', error=error)
 
