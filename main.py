@@ -247,7 +247,7 @@ def change_config_values():
     for line in config_file:
         if line.startswith("ADMIN_PASSWORD") and len(app.config['ADMIN_PASSWORD']) != 128:
             hashed = hashlib.sha512(app.config['ADMIN_PASSWORD'].encode('utf-8')).hexdigest()
-            lines.append("ADMIN_PASSWORD = \"" + hashed + "\"")
+            lines.append("ADMIN_PASSWORD = \"" + hashed + "\"\n")
             app.config['ADMIN_PASSWORD'] = hashed
             something_changed = True
 
