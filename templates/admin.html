@@ -3,10 +3,10 @@
 
 	{% for user in users %}
 	<div class="user-entry">
-		<strong>Username : </strong>{{ user }}<br />
-		<strong>Email    : </strong>{{ emails[loop.index0] }}<br />
-		<button onclick="approve('{{ user }}')" type="button" class="btn btn-success">Approve</button>
-		<button onclick="deny('{{ user }}')" type="button" class="btn btn-warning">Deny</button>
+		<strong>Username : </strong>{{ user[0] }}<br />
+		<strong>Email    : </strong>{{ user[1] }}<br />
+		<button onclick="approve('{{ user[0] }}')" type="button" class="btn btn-success">Approve</button>
+		<button onclick="deny('{{ user[0] }}')" type="button" class="btn btn-warning">Deny</button>
 	</div>
 	{% else %}
 	<h1>Nobody's waiting for approval.</h1>

@@ -22,8 +22,6 @@ app.config.from_pyfile('config.py')
 recaptcha = ReCaptcha(app=app)
 db = MySQL(app)
 
-users_file_lock = threading.Lock()
-
 @app.route("/")
 def index():
     return render_template('register.html')
@@ -53,46 +51,34 @@ def register():
         error = "Invalid email address"
 
     if not error:
-        with users_file_lock:
-            users_waiting = {}
-            file = open("users_waiting_approval", "r")
-        
-            for line in file:
-                tab = line.split(":")
+        cur = db.connection.cursor()
+        cur.execute("SELECT username FROM users_waiting_approval")
+        users_waiting = cur.fetchall()
+        db.connection.commit()
+        users_waiting = [user[0] for user in users_waiting]
 
-                if len(tab) == 3:
-                    users_waiting[tab[0]] = (tab[1], tab[2])
+        if username in users_waiting:
+            error = "User already in registration process"
+        else:
+            # Register user using ejabberdctl
+            code = call(["/usr/sbin/ejabberdctl", "register", username, app.config["XMPP_HOST"], password])
 
-            file.close()
+            if code == 1:
+                error = "User already registered"
+                print(error)
+                return json.dumps(error)
 
-            if username in users_waiting:
-                error = "User already in registration process"
-            else:
-                # Register user using ejabberdctl
-                code = call(["/usr/sbin/ejabberdctl", "register", username, app.config["XMPP_HOST"], password])
 
-                if code == 1:
-                    error = "User already registered"
-                    print(error)
-                    return json.dumps(error)
+            # Get the hash from database and store it in the users_waiting_approval table
+            cur.execute("SELECT password FROM users WHERE username = %s", [username])
+            hash = cur.fetchall()[0][0]
+            db.connection.commit()
+            cur.execute("INSERT INTO users_waiting_approval (username, password, email) VALUES (%s, %s, %s)", [username, hash, email])
+            db.connection.commit()
 
-                # Get the hash from database and store it internally user:hash
-                cur = db.connection.cursor()
-                cur.execute("SELECT password FROM users WHERE username = %s", [username])
-                hash = cur.fetchall()[0][0]
-
-                users_waiting[username] = (hash, email)
-
-                file = open("users_waiting_approval", "w")
-
-                for username in users_waiting:
-                    file.write(username + ":" + users_waiting[username][0] + ":" + users_waiting[username][1] + "\n")
-
-                file.close()
-
-                # Remove the hash from the database (user can't login until he's approved by an admin)
-                cur.execute("UPDATE users SET password = '' WHERE username = %s", [username])
-                db.connection.commit()
+            # Remove the hash from database (user can't login until he's approved by an admin)
+            cur.execute("UPDATE users SET password = '' WHERE username = %s", [username])
+            db.connection.commit()
 
     return json.dumps(error)
 
@@ -132,21 +118,12 @@ def admin():
         return redirect("/admin/login", code=302)
 
     # Admin is connected
-    # We read the file users_waiting_approval in order to display it
 
-    users = []
-    emails = []
+    cur = db.connection.cursor()
+    cur.execute("SELECT username, email FROM users_waiting_approval")
+    db.connection.commit()
 
-    file = open("users_waiting_approval", "r")
-    
-    for line in file:
-        tab = line.split(":")
-        users.append(tab[0])
-        emails.append(tab[2]) # even if email address is empty
-
-    file.close()
-
-    return render_template('admin.html', users=users, emails=emails)
+    return render_template('admin.html', users=cur.fetchall())
 
 
 @app.route("/approve/<username>")
@@ -155,42 +132,30 @@ def approve(username):
     if 'connected' not in session:
         return redirect("/admin/login", code=302)
 
-    file = open("users_waiting_approval", "r")
-    lines = []
+    cur = db.connection.cursor()
+    cur.execute("SELECT password, email FROM users_waiting_approval WHERE username = %s", [username])
+    user = cur.fetchall()[0]
+    db.connection.commit()
 
-    for line in file:
-        if line.startswith(username):
-            tab = line.split(":")
+    # Restore hash in database and remove user from waiting table
+    cur.execute("UPDATE users SET password = %s WHERE username = %s", [user[0], username])
+    db.connection.commit()
+    cur.execute("DELETE FROM users_waiting_approval WHERE username = %s", [username])
+    db.connection.commit()
 
-            # Restore hash in database
-            cur = db.connection.cursor()
-            cur.execute("UPDATE users SET password = %s WHERE username = %s", [tab[1], username])
-            db.connection.commit()
+    # Send email to notify the user (if email specified)
+    if user[1] is not None:
+        msg = EmailMessage()
+        msg.set_content("Your account %s has been approved on %s" % (username, app.config['XMPP_HOST']))
+        msg['Subject'] = 'Account approved'
+        msg['From'] = "noreply@" + app.config['XMPP_HOST']
+        msg['To'] = user[1]
+        s = smtplib.SMTP(app.config['SMTP_HOST'])
+        s.send_message(msg)
+        s.quit()
+        print("Email sent to " + user[1])
 
-            # Send email to tab[2]
-            msg = EmailMessage()
-            msg.set_content("Your account %s has been approved on %s" % (username, app.config['XMPP_HOST']))
-            msg['Subject'] = 'Account approved'
-            msg['From'] = "noreply@" + app.config['XMPP_HOST']
-            msg['To'] = tab[2]
-            s = smtplib.SMTP(app.config['SMTP_HOST'])
-            s.send_message(msg)
-            s.quit()
-        else:
-            lines.append(line)
-
-    file.close()
-
-    # Write file again without the approved user
-    with users_file_lock:
-        file = open("users_waiting_approval", "w")
-
-        for line in lines:
-            file.write(line)
-
-        file.close()
-
-    return "Approving " + username
+    return username + " approved."
 
 
 @app.route("/deny/<username>")
@@ -199,28 +164,14 @@ def deny(username):
     if 'connected' not in session:
         return redirect("/admin/login", code=302)
 
-    file = open("users_waiting_approval", "r")
-    lines = []
-
-    for line in file:
-        if not line.startswith(username): # Exclude the user to deny
-            lines.append(line)
-
-    file.close()
-
-    # Write file again without the approved user
-    with users_file_lock:
-        file = open("users_waiting_approval", "w")
-
-        for line in lines:
-            file.write(line)
-
-        file.close()
+    cur = db.connection.cursor()
+    cur.execute("DELETE FROM users_waiting_approval WHERE username = %s", [username])
+    db.connection.commit()
 
     # Unregistering user with ejabberdctl
     call(["/usr/sbin/ejabberdctl", "unregister", username, app.config["XMPP_HOST"]])
 
-    return "Denying " + username
+    return username + " removed."
 
 
 def extract_key_value(config_line):
@@ -317,6 +268,7 @@ def change_config_values():
 if __name__ == "__main__":
     parse_ejabberd_yml()
     change_config_values()
+
     print("Running server " + app.config['WEBSITE_NAME'] + "...")
     app.run(host='localhost', port=1337)
     print("Stopping...")
