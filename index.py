@@ -9,6 +9,9 @@ import hashlib
 import threading
 import random
 import string
+import re
+import smtplib
+from email.message import EmailMessage
 
 app = Flask(__name__,
             static_url_path='',
@@ -33,8 +36,10 @@ def thanks():
 
 @app.route("/register", methods=['POST'])
 def register():
-
     error = None
+
+    if not recaptcha.verify():
+        error = "Invalid Captcha"
 
     username = request.form.get("username")
     email = request.form.get("email")
@@ -44,8 +49,8 @@ def register():
     if password != confirm_pass:
         error = "Passwords are different"
 
-    if not recaptcha.verify():
-        error = "Invalid Captcha"
+    if len(email) > 0 and not re.match(r"^[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]*$", email):
+        error = "Invalid email address"
 
     if not error:
         with users_file_lock:
@@ -55,8 +60,8 @@ def register():
             for line in file:
                 tab = line.split(":")
 
-                if len(tab) == 2:
-                    users_waiting[tab[0]] = tab[1]
+                if len(tab) == 3:
+                    users_waiting[tab[0]] = (tab[1], tab[2])
 
             file.close()
 
@@ -76,12 +81,12 @@ def register():
                 cur.execute("SELECT password FROM users WHERE username = %s", [username])
                 hash = cur.fetchall()[0][0]
 
-                users_waiting[username] = hash
+                users_waiting[username] = (hash, email)
 
                 file = open("users_waiting_approval", "w")
 
                 for username in users_waiting:
-                    file.write(username + ":" + users_waiting[username] + "\n")
+                    file.write(username + ":" + users_waiting[username][0] + ":" + users_waiting[username][1] + "\n")
 
                 file.close()
 
@@ -126,7 +131,96 @@ def admin():
     if 'connected' not in session:
         return redirect("/admin/login", code=302)
 
-    return render_template('admin.html')
+    # Admin is connected
+    # We read the file users_waiting_approval in order to display it
+
+    users = []
+    emails = []
+
+    file = open("users_waiting_approval", "r")
+    
+    for line in file:
+        tab = line.split(":")
+        users.append(tab[0])
+        emails.append(tab[2]) # even if email address is empty
+
+    file.close()
+
+    return render_template('admin.html', users=users, emails=emails)
+
+
+@app.route("/approve/<username>")
+def approve(username):
+
+    if 'connected' not in session:
+        return redirect("/admin/login", code=302)
+
+    file = open("users_waiting_approval", "r")
+    lines = []
+
+    for line in file:
+        if line.startswith(username):
+            tab = line.split(":")
+
+            # Restore hash in database
+            cur = db.connection.cursor()
+            cur.execute("UPDATE users SET password = %s WHERE username = %s", [tab[1], username])
+            db.connection.commit()
+
+            # Send email to tab[2]
+            msg = EmailMessage()
+            msg.set_content("Your account %s has been approved on %s" % (username, app.config['XMPP_HOST']))
+            msg['Subject'] = 'Account approved'
+            msg['From'] = "noreply@" + app.config['XMPP_HOST']
+            msg['To'] = tab[2]
+            s = smtplib.SMTP(app.config['SMTP_HOST'])
+            s.send_message(msg)
+            s.quit()
+        else:
+            lines.append(line)
+
+    file.close()
+
+    # Write file again without the approved user
+    with users_file_lock:
+        file = open("users_waiting_approval", "w")
+
+        for line in lines:
+            file.write(line)
+
+        file.close()
+
+    return "Approving " + username
+
+
+@app.route("/deny/<username>")
+def deny(username):
+
+    if 'connected' not in session:
+        return redirect("/admin/login", code=302)
+
+    file = open("users_waiting_approval", "r")
+    lines = []
+
+    for line in file:
+        if not line.startswith(username): # Exclude the user to deny
+            lines.append(line)
+
+    file.close()
+
+    # Write file again without the approved user
+    with users_file_lock:
+        file = open("users_waiting_approval", "w")
+
+        for line in lines:
+            file.write(line)
+
+        file.close()
+
+    # Unregistering user with ejabberdctl
+    call(["/usr/sbin/ejabberdctl", "unregister", username, app.config["XMPP_HOST"]])
+
+    return "Denying " + username
 
 
 def extract_key_value(config_line):
@@ -138,6 +232,7 @@ def extract_key_value(config_line):
     tab[1] = tab[1].replace("\"", "") # Config lines are already strings within python, so we remove the " read from the config file
 
     return tab[0], tab[1]
+
 
 def parse_ejabberd_yml():
     # try to read MySQL parameters

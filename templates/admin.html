@@ -1,5 +1,16 @@
 {% extends "main.html" %}
 {% block body %}
-	<a href="/admin/logout" class="w-100"><button type="button" class="btn btn-danger w-100">Logout</button></a>
 
+	{% for user in users %}
+	<div class="user-entry">
+		<strong>Username : </strong>{{ user }}<br />
+		<strong>Email    : </strong>{{ emails[loop.index0] }}<br />
+		<button onclick="approve('{{ user }}')" type="button" class="btn btn-success">Approve</button>
+		<button onclick="deny('{{ user }}')" type="button" class="btn btn-warning">Deny</button>
+	</div>
+	{% else %}
+	<h1>Nobody's waiting for approval.</h1>
+	{% endfor %}
+
+	<a href="/admin/logout" class="w-100"><button type="button" class="btn btn-danger w-100">Logout</button></a>
 {% endblock %}

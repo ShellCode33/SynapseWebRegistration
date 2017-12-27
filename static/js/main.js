@@ -29,3 +29,21 @@ $(function () {
     });
   });
 })
+
+function approve(username) {
+	$.ajax({
+	  method: "GET",
+	  url: "/approve/" + username
+	}).done(function(data) {
+	  console.log("remove box")
+	});
+}
+
+function deny(username) {
+	$.ajax({
+	  method: "GET",
+	  url: "/deny/" + username
+	}).done(function(data) {
+	  console.log("remove box")
+	});
+}
