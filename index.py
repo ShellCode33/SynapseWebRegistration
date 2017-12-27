@@ -5,6 +5,10 @@ from flask import Flask, flash, redirect, render_template, request, session, abo
 from flask_recaptcha import ReCaptcha
 from flask_mysqldb import MySQL
 from subprocess import call
+import hashlib
+import threading
+import random
+import string
 
 app = Flask(__name__,
             static_url_path='',
@@ -14,6 +18,8 @@ app = Flask(__name__,
 app.config.from_pyfile('config.py')
 recaptcha = ReCaptcha(app=app)
 db = MySQL(app)
+
+users_file_lock = threading.Lock()
 
 @app.route("/")
 def index():
@@ -42,60 +48,83 @@ def register():
         error = "Invalid Captcha"
 
     if not error:
-        users_waiting = {}
-        file = open("users_waiting_approval", "r")
+        with users_file_lock:
+            users_waiting = {}
+            file = open("users_waiting_approval", "r")
         
-        for line in file:
-            tab = line.split(":")
+            for line in file:
+                tab = line.split(":")
 
-            if len(tab) == 2:
-                users_waiting[tab[0]] = tab[1]
-
-        file.close()
-
-        print("actual: " + str(users_waiting))
-
-        if username in users_waiting:
-            error = "User already in registration process"
-        else:
-            # Register user using ejabberdctl
-            code = call(["/usr/sbin/ejabberdctl", "register", username, app.config["XMPP_HOST"], password])
-
-            if code == 1:
-                error = "User already registered"
-                print(error)
-                return json.dumps(error)
-
-            # Get the hash from database and store it internally user:hash
-            cur = db.connection.cursor()
-            cur.execute("SELECT password FROM users WHERE username = %s", [username])
-            hash = cur.fetchall()[0][0]
-
-            users_waiting[username] = hash
-
-            file = open("users_waiting_approval", "w")
-
-            for username in users_waiting:
-                file.write(username + ":" + users_waiting[username] + "\n")
+                if len(tab) == 2:
+                    users_waiting[tab[0]] = tab[1]
 
             file.close()
 
-            # Remove the hash from the database (user can't login until he's approved by an admin)
-            cur.execute("UPDATE users SET password = '' WHERE username = %s", [username])
-            db.connection.commit()
+            if username in users_waiting:
+                error = "User already in registration process"
+            else:
+                # Register user using ejabberdctl
+                code = call(["/usr/sbin/ejabberdctl", "register", username, app.config["XMPP_HOST"], password])
+
+                if code == 1:
+                    error = "User already registered"
+                    print(error)
+                    return json.dumps(error)
+
+                # Get the hash from database and store it internally user:hash
+                cur = db.connection.cursor()
+                cur.execute("SELECT password FROM users WHERE username = %s", [username])
+                hash = cur.fetchall()[0][0]
+
+                users_waiting[username] = hash
+
+                file = open("users_waiting_approval", "w")
+
+                for username in users_waiting:
+                    file.write(username + ":" + users_waiting[username] + "\n")
+
+                file.close()
+
+                # Remove the hash from the database (user can't login until he's approved by an admin)
+                cur.execute("UPDATE users SET password = '' WHERE username = %s", [username])
+                db.connection.commit()
 
     return json.dumps(error)
 
 
-@app.route("/admin/login")
+@app.route("/admin/login", methods=['GET', 'POST'])
 def admin_login():
-    return render_template('admin_login.html')
 
+    if 'connected' in session:
+        return redirect("/admin", code=302)
+
+    error = None
+
+    if not recaptcha.verify():
+        error = "Invalid Captcha"
+
+    elif request.method == "POST":
+        password = hashlib.sha512(request.form.get('password').encode("utf-8")).hexdigest()
+
+        if password == app.config["ADMIN_PASSWORD"]:
+            session['connected'] = 'ok'
+            return redirect("/admin", code=302)
+        else:
+            error = "Wrong password"
+
+    return render_template('admin_login.html', error=error)
+
+
+@app.route("/admin/logout")
+def admin_logout():
+    session.clear()
+    return redirect("/admin/login", code=302)
 
 @app.route("/admin")
 def admin():
 
-    # Si la session n'est pas valide, on redirige sur /admin/login qui va demander un mdp
+    if 'connected' not in session:
+        return redirect("/admin/login", code=302)
 
     return render_template('admin.html')
 
@@ -153,8 +182,46 @@ def parse_ejabberd_yml():
     file.close()
 
 
+def change_config_values():
+
+    # If the admin password in the config file is not hashed, we do it
+    # If the SECRET_KEY is not set, we create a random one
+
+    something_changed = False
+
+    lines = []
+    config_file = open("config.py", "r")
+
+    for line in config_file:
+        if line.startswith("ADMIN_PASSWORD") and len(app.config['ADMIN_PASSWORD']) != 128:
+            hashed = hashlib.sha512(app.config['ADMIN_PASSWORD'].encode('utf-8')).hexdigest()
+            lines.append("ADMIN_PASSWORD = \"" + hashed + "\"")
+            app.config['ADMIN_PASSWORD'] = hashed
+            something_changed = True
+
+        elif line.startswith("SECRET_KEY") and len(app.config['SECRET_KEY']) == 0:
+            new_key = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(24)])
+            lines.append("SECRET_KEY = \"" + new_key + "\"\n")
+            app.config['SECRET_KEY'] = new_key
+            something_changed = True
+
+        else:
+            lines.append(line)
+
+    config_file.close()
+
+    if something_changed:
+        config_file = open("config.py", "w")
+        
+        for line in lines:
+            config_file.write(line)
+
+        config_file.close()
+
+
 if __name__ == "__main__":
     parse_ejabberd_yml()
+    change_config_values()
     print("Running server " + app.config['WEBSITE_NAME'] + "...")
     app.run(host='localhost', port=1337)
     print("Stopping...")

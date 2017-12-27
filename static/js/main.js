@@ -2,7 +2,7 @@
 $(function () {
   $('[data-toggle="tooltip"]').tooltip();
 
-  $("#submit-button").click(function(event) {
+  $("#submit-button-register").click(function(event) {
 
     var postData = {
       'username' :          $('input[name=username]').val(),

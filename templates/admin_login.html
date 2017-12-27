@@ -1,0 +1,18 @@
+{% extends "main.html" %}
+{% block body %}
+
+<br />
+
+<div class="alert alert-danger" role="alert" id="error" hidden></div>
+
+<form method="POST" action="/admin/login" id="admin-login-form">
+	{% if error %}
+	<div class="alert alert-danger" role="alert" id="error"><strong>Oups !</strong> {{ error }}</div>
+	{% endif %}
+
+	<input type="password" name="password" placeholder="Password...">
+	{{ recaptcha }}
+	<input type="submit" name="login" class="login loginmodal-submit" value="Login" id="submit-button-admin-login">
+</form>
+
+{% endblock %}
