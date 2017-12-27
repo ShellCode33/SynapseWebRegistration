@@ -44,10 +44,16 @@ def register():
     password = request.form.get("password")
     confirm_pass = request.form.get("confirm_password")
 
-    if password != confirm_pass:
+    if not re.match(r"^[a-zA-Z0-9_.-]+$", username):
+        error = "Username can only be made of letters, digits and _ . - "
+
+    elif password != confirm_pass:
         error = "Passwords are different"
 
-    if len(email) > 0 and not re.match(r"^[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]*$", email):
+    elif not re.match(r'^(?=.*?\d)(?=.*?[A-Z])(?=.*?[a-z])[A-Za-z\d]{8,}$', password):
+        error = "Password has to be 8 caracters long and contain at least 1 lowercase caracter, 1 uppercase and 1 digit"
+
+    elif len(email) > 0 and not re.match(r"^[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]*$", email):
         error = "Invalid email address"
 
     if not error:
