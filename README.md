@@ -25,7 +25,7 @@ sudo -H -u ejabberd pip3 install flask-mysqldb
 You will have to create a table in order to store the users waiting for approval.
 To do so, please execute the following statement :
 ```
-CREATE TABLE users_waiting_approval (username VARCHAR(100) NOT NULL PRIMARY KEY, password VARCHAR(128), email VARCHAR(200));
+CREATE TABLE users_waiting_approval (username VARCHAR(100) NOT NULL PRIMARY KEY, password VARCHAR(128) NOT NULL, email VARCHAR(200));
 ```
 
 ## Running
