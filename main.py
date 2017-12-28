@@ -149,7 +149,7 @@ def approve(username):
     db.connection.commit()
 
     # Send email to notify the user (if email specified)
-    if user[1] is not None:
+    if user[1] is not None and len(user[1]) > 0:
         msg = EmailMessage()
         msg.set_content("Your account %s has been approved on %s" % (username, app.config['XMPP_HOST']))
         msg['Subject'] = 'Account approved'
