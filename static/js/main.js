@@ -4,11 +4,14 @@ $(function () {
 
   $("#submit-button-register").click(function(event) {
 
+    console.log("Click register button");
+
     var postData = {
-      'username' :          $('input[name=username]').val(),
-      'email' :             $('input[name=email]').val(),
-      'password' :          $('input[name=password]').val(),
-      'confirm_password' :  $('input[name=confirm_password]').val()
+      'username'		:	$('input[name=username]').val(),
+      'email'			:	$('input[name=email]').val(),
+      'password'		:	$('input[name=password]').val(),
+      'confirm_password'	:	$('input[name=confirm_password]').val(),
+      'g-recaptcha-response'	:	grecaptcha.getResponse()    
     };
 
     $.ajax({
