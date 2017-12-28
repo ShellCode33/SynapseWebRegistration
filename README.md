@@ -16,9 +16,9 @@ sudo apt install python3-mysqldb libmariadbclient-dev #libmysqlclient-dev packag
 
 Python3 will need a few libraries to run this code
 ```
-sudo -H -u ejabberd pip3 install flask
-sudo -H -u ejabberd pip3 install flask_recaptcha
-sudo -H -u ejabberd pip3 install flask-mysqldb
+sudo -u ejabberd pip3 install flask
+sudo -u ejabberd pip3 install flask_recaptcha
+sudo -u ejabberd pip3 install flask-mysqldb
 ```
 
 ## Prepare database
@@ -38,9 +38,9 @@ sudo chown ejabberd:ejabberd config.py
 ## Running
 This is as simple as :
 ```
-sudo -H -u ejabberd ./main.py
+sudo -u ejabberd ./main.py
 ```
 You can also run it in background like this :
 ```
-sudo -H -u ejabberd nohup ./main.py &
+sudo -u ejabberd nohup ./main.py &
 ```
