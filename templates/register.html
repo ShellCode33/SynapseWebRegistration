@@ -1,26 +1,22 @@
 {% extends "main.html" %}
 {% block body %}
 
-	{% if session.logged_in %}
-		<h1>You're logged in !</h1>
-	{% else %}
-		<br />
+	<br />
 
-		<div class="alert alert-danger" role="alert" id="error" hidden></div>
+	<div class="alert alert-danger" role="alert" id="error" hidden></div>
 
-		<div id="registration-form">
-			<input type="text" name="username" placeholder="Username...">
+	<div id="registration-form">
+		<input type="text" name="username" placeholder="Username...">
 
-			{% if config.ASK_EMAIL_ADDRESS %}
-			<input type="email" name="email" placeholder="Email..." data-toggle="tooltip" data-placement="right" title="(Optional) Will only be used to send you a notification when the admin approves your registration">
-			{% endif %}
+		{% if config.ASK_EMAIL_ADDRESS %}
+		<input type="email" name="email" placeholder="Email..." data-toggle="tooltip" data-placement="right" title="(Optional) Will only be used to send you a notification when the admin approves your registration">
+		{% endif %}
 
 
-			<input type="password" name="password" placeholder="Password...">
-			<input type="password" name="confirm_password" placeholder="Confirm password...">
-			{{ recaptcha }}
-			<input type="submit" name="register" class="login loginmodal-submit" value="Register" id="submit-button-register">
-		</div>
-	{% endif %}
+		<input type="password" name="password" placeholder="Password...">
+		<input type="password" name="confirm_password" placeholder="Confirm password...">
+		{{ recaptcha }}
+		<input type="submit" name="register" class="login loginmodal-submit" value="Register" id="submit-button-register">
+	</div>
 
 {% endblock %}

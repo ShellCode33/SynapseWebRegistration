@@ -36,9 +36,6 @@ def thanks():
 def register():
     error = None
 
-    if not recaptcha.verify():
-        error = "Invalid Captcha"
-
     username = request.form.get("username")
     email = request.form.get("email")
     password = request.form.get("password")
@@ -50,11 +47,14 @@ def register():
     elif password != confirm_pass:
         error = "Passwords are different"
 
-    elif not re.match(r'^(?=.*?\d)(?=.*?[A-Z])(?=.*?[a-z])[A-Za-z\d]{8,}$', password):
-        error = "Password has to be 8 caracters long and contain at least 1 lowercase caracter, 1 uppercase and 1 digit"
+    elif len(password) < 8 or not any(char.isdigit() for char in password) or not any(char.isalpha() for char in password):
+        error = "Password has to be 8 caracters long and contain caracter(s) plus digit(s)"
 
     elif len(email) > 0 and not re.match(r"^[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]*$", email):
         error = "Invalid email address"
+
+    elif not recaptcha.verify():
+        error = "Invalid Captcha"
 
     if not error:
         cur = db.connection.cursor()
@@ -71,20 +71,18 @@ def register():
 
             if code == 1:
                 error = "User already registered"
-                print(error)
-                return json.dumps(error)
 
+            else:
+                # Get the hash from database and store it in the users_waiting_approval table
+                cur.execute("SELECT password FROM users WHERE username = %s", [username])
+                hash = cur.fetchall()[0][0]
+                db.connection.commit()
+                cur.execute("INSERT INTO users_waiting_approval (username, password, email) VALUES (%s, %s, %s)", [username, hash, email])
+                db.connection.commit()
 
-            # Get the hash from database and store it in the users_waiting_approval table
-            cur.execute("SELECT password FROM users WHERE username = %s", [username])
-            hash = cur.fetchall()[0][0]
-            db.connection.commit()
-            cur.execute("INSERT INTO users_waiting_approval (username, password, email) VALUES (%s, %s, %s)", [username, hash, email])
-            db.connection.commit()
-
-            # Remove the hash from database (user can't login until he's approved by an admin)
-            cur.execute("UPDATE users SET password = '' WHERE username = %s", [username])
-            db.connection.commit()
+                # Remove the hash from database (user can't login until he's approved by an admin)
+                cur.execute("UPDATE users SET password = '' WHERE username = %s", [username])
+                db.connection.commit()
 
     return json.dumps(error)
 
