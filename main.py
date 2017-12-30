@@ -59,7 +59,7 @@ def register():
         cur = db_connection.cursor()
         cur.execute("SELECT username FROM users_waiting_approval")
         users_waiting = cur.fetchall()
-        db.connection.commit()
+        db_connection.commit()
         users_waiting = [user[0] for user in users_waiting]
 
         if username in users_waiting:
@@ -77,13 +77,13 @@ def register():
                 # Get the hash from database and store it in the users_waiting_approval table
                 cur.execute("SELECT password_hash FROM users WHERE username LIKE '%%s%", [username])
                 hash = cur.fetchall()[0][0]
-                db.connection.commit()
+                db_connection.commit()
                 cur.execute("INSERT INTO users_waiting_approval (username, password, email) VALUES (%s, %s, %s)", [username, hash, email])
-                db.connection.commit()
+                db_connection.commit()
 
                 # Remove the hash from database (user can't login until he's approved by an admin)
                 cur.execute("UPDATE users SET password_hash = '' WHERE username LIKE '%%s'", [username])
-                db.connection.commit()
+                db_connection.commit()
 
     return json.dumps(error)
 
@@ -127,7 +127,7 @@ def admin():
 
     cur = db_connection.cursor()
     cur.execute("SELECT username, email FROM users_waiting_approval")
-    db.connection.commit()
+    db_connection.commit()
 
     return render_template('admin.html', users=cur.fetchall())
 
@@ -141,13 +141,13 @@ def approve(username):
     cur = db_connection.cursor()
     cur.execute("SELECT password, email FROM users_waiting_approval WHERE username = %s", [username])
     user = cur.fetchall()[0]
-    db.connection.commit()
+    db_connection.commit()
 
     # Restore hash in database and remove user from waiting table
     cur.execute("UPDATE users SET password_hash = %s WHERE username LIKE '%%s%'", [user[0], username])
-    db.connection.commit()
+    db_connection.commit()
     cur.execute("DELETE FROM users_waiting_approval WHERE username = %s", [username])
-    db.connection.commit()
+    db_connection.commit()
 
     # Send email to notify the user (if email specified)
     if user[1] is not None and len(user[1]) > 0:
@@ -171,7 +171,7 @@ def deny(username):
 
     cur = db_connection.cursor()
     cur.execute("DELETE FROM users_waiting_approval WHERE username = %s", [username])
-    db.connection.commit()
+    db_connection.commit()
 
     # Unregister user from database maybe coming soon ?
     # A user can't be removed... https://github.com/matrix-org/synapse/issues/1941
@@ -252,6 +252,6 @@ if __name__ == "__main__":
     db_connection.commit()
 
     print("Running server " + app.config['WEBSITE_NAME'] + "...")
-    app.run(host='localhost', port=1337)
+    app.run(host='192.168.1.6', port=1337)
     print("Stopping...")
 
