@@ -11,7 +11,7 @@ $(function () {
       'email'			:	$('input[name=email]').val(),
       'password'		:	$('input[name=password]').val(),
       'confirm_password'	:	$('input[name=confirm_password]').val(),
-      'g-recaptcha-response'	:	grecaptcha.getResponse()    
+      'g-recaptcha-response'	:	typeof grecaptcha !== 'undefined' ? grecaptcha.getResponse() : ''    
     };
 
     $.ajax({
