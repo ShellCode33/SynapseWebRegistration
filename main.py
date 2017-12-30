@@ -3,8 +3,7 @@
 
 from flask import Flask, flash, redirect, render_template, request, session, abort, json
 from flask_recaptcha import ReCaptcha
-from flask_mysqldb import MySQL
-from subprocess import call
+from subprocess import Popen, PIPE, STDOUT
 import hashlib
 import threading
 import random
@@ -20,7 +19,7 @@ app = Flask(__name__,
 
 app.config.from_pyfile('config.py')
 recaptcha = ReCaptcha(app=app)
-db = MySQL(app)
+db_connection = None
 
 @app.route("/")
 def index():
@@ -57,7 +56,7 @@ def register():
         error = "Invalid Captcha"
 
     if not error:
-        cur = db.connection.cursor()
+        cur = db_connection.cursor()
         cur.execute("SELECT username FROM users_waiting_approval")
         users_waiting = cur.fetchall()
         db.connection.commit()
@@ -66,22 +65,24 @@ def register():
         if username in users_waiting:
             error = "User already in registration process"
         else:
-            # Register user using ejabberdctl
-            code = call(["/usr/sbin/ejabberdctl", "register", username, app.config["XMPP_HOST"], password])
+            # Register user using register_new_matrix_user program
+            p = Popen(["register_new_matrix_user", "-c", app.config["SYNAPSE_CONFIG_FILE"], "https://localhost:" + app.config["FEDERATION_PORT"], "-u", username, "-p", password], stdout=PIPE, stdin=PIPE, stderr=PIPE)
+            p.communicate(input="no")
+            code = p.returncode
 
             if code == 1:
                 error = "User already registered"
 
             else:
                 # Get the hash from database and store it in the users_waiting_approval table
-                cur.execute("SELECT password FROM users WHERE username = %s", [username])
+                cur.execute("SELECT password_hash FROM users WHERE username = %s", [username])
                 hash = cur.fetchall()[0][0]
                 db.connection.commit()
                 cur.execute("INSERT INTO users_waiting_approval (username, password, email) VALUES (%s, %s, %s)", [username, hash, email])
                 db.connection.commit()
 
                 # Remove the hash from database (user can't login until he's approved by an admin)
-                cur.execute("UPDATE users SET password = '' WHERE username = %s", [username])
+                cur.execute("UPDATE users SET password_hash = '' WHERE username = %s", [username])
                 db.connection.commit()
 
     return json.dumps(error)
@@ -124,7 +125,7 @@ def admin():
 
     # Admin is connected
 
-    cur = db.connection.cursor()
+    cur = db_connection.cursor()
     cur.execute("SELECT username, email FROM users_waiting_approval")
     db.connection.commit()
 
@@ -137,13 +138,13 @@ def approve(username):
     if 'connected' not in session:
         return redirect("/admin/login", code=302)
 
-    cur = db.connection.cursor()
+    cur = db_connection.cursor()
     cur.execute("SELECT password, email FROM users_waiting_approval WHERE username = %s", [username])
     user = cur.fetchall()[0]
     db.connection.commit()
 
     # Restore hash in database and remove user from waiting table
-    cur.execute("UPDATE users SET password = %s WHERE username = %s", [user[0], username])
+    cur.execute("UPDATE users SET password_hash = %s WHERE username = %s", [user[0], username])
     db.connection.commit()
     cur.execute("DELETE FROM users_waiting_approval WHERE username = %s", [username])
     db.connection.commit()
@@ -151,9 +152,9 @@ def approve(username):
     # Send email to notify the user (if email specified)
     if user[1] is not None and len(user[1]) > 0:
         msg = EmailMessage()
-        msg.set_content("Your account %s has been approved on %s" % (username, app.config['XMPP_HOST']))
+        msg.set_content("Your account %s has been approved on %s" % (username, app.config['MATRIX_DOMAIN']))
         msg['Subject'] = 'Account approved'
-        msg['From'] = "noreply@" + app.config['XMPP_HOST']
+        msg['From'] = app.config['EMAIL_FROM']
         msg['To'] = user[1]
         s = smtplib.SMTP(app.config['SMTP_HOST'])
         s.send_message(msg)
@@ -169,69 +170,19 @@ def deny(username):
     if 'connected' not in session:
         return redirect("/admin/login", code=302)
 
-    cur = db.connection.cursor()
+    cur = db_connection.cursor()
     cur.execute("DELETE FROM users_waiting_approval WHERE username = %s", [username])
     db.connection.commit()
 
-    # Unregistering user with ejabberdctl
-    call(["/usr/sbin/ejabberdctl", "unregister", username, app.config["XMPP_HOST"]])
+    # Unregister user from database maybe coming soon ?
+    # A user can't be removed... https://github.com/matrix-org/synapse/issues/1941
 
     return username + " removed."
 
 
-def extract_key_value(config_line):
-    tab = config_line.strip().split(": ")
-
-    if len(tab) == 1:
-        return tab[0], None
-
-    tab[1] = tab[1].replace("\"", "") # Config lines are already strings within python, so we remove the " read from the config file
-
-    return tab[0], tab[1]
-
-
-def parse_ejabberd_yml():
-    # try to read MySQL parameters
-    file = open(app.config['EJABBERD_CONFIG_FILE'], "r")
-    
-    for line in file:
-        if not line.strip().startswith("#"): # If it is not a comment
-            key, value = extract_key_value(line)
-
-            # Test if the config file has some requirements
-
-            if key == "auth_method" and value != "sql":
-                print("only sql auth method is supported !")
-                exit(1)
-
-            if key == "sql_type" and value != "mysql":
-                print("MySQL is the only supported DBMS")
-                exit(1)
-
-            if key == "auth_password_format" and value != "scram":
-                print("scram password format is the only way to secure users' password, please use it.")
-                exit(1)
-
-
-            # Read DB parameters
-
-            if key == "sql_server":
-                app.config['MYSQL_HOST'] = value
-
-            elif key == "sql_database":
-                app.config['MYSQL_DB'] = value
-
-            elif key == "sql_username":
-                app.config['MYSQL_USER'] = value
-
-            elif key == "sql_password":
-                app.config['MYSQL_PASSWORD'] = value
-
-            elif key == "sql_port":
-                app.config['MYSQL_PORT'] = int(value)
-
-    file.close()
-
+# Maybe coming soon
+def parse_synapse_yaml():
+    pass
 
 def change_config_values():
 
@@ -276,8 +227,30 @@ if __name__ == "__main__":
         print("Please choose an admin password.")
         exit(1)
 
-    parse_ejabberd_yml()
+    parse_synape_yaml()
     change_config_values()
+
+    if(app.config["DB_TYPE"] == "sqlite"):
+        import sqlite3
+        db_connection = sqlite3.connect(app.config["DB_FILE_SQLITE"])
+
+    elif(app.config["DB_TYPE"] == "postgres"):
+        import psycopg2
+        try:
+            db_connection = psycopg2.connect("dbname='" + app.config["DB_NAME"] + "' user='" + app.config["DB_USER"] + "' host='" + app.config["DB_HOST"] + "' password='" + app.config["DB_PASS"] + "'")
+        except:
+            print("Can't conect to postgres database")
+            exit(1)
+
+    else:
+        print(app.config["DB_TYPE"] + " not supported yet.")
+        exit(1)
+
+
+    # Create the required table to store users waiting for approval
+    cur = db_connection.cursor()
+    cur.execute("CREATE TABLE IF NOT EXISTS users_waiting_approval (username VARCHAR(100) NOT NULL PRIMARY KEY, password VARCHAR(128) NOT NULL, email VARCHAR(200)")
+
 
     print("Running server " + app.config['WEBSITE_NAME'] + "...")
     app.run(host='localhost', port=1337)

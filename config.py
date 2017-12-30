@@ -1,22 +1,31 @@
-WEB_ROOT = "/var/www/html/ejabberd-web-registration/"
 WEBSITE_NAME = "YourWebsite"
 
+# Web Config
 ASK_EMAIL_ADDRESS = True
 EMAIL_ADDRESS_MENDATORY = False
 SMTP_HOST = "localhost"
+EMAIL_FROM = "noreply@domain.fr"
 
-ADMIN_PASSWORD = ""
-SECRET_KEY = ""
-XMPP_HOST = "your_domain.fr"
-EJABBERD_CONFIG_FILE = "/etc/ejabberd/ejabberd.yml"
+# Web Admin
+ADMIN_PASSWORD = "" # Please define it
+SECRET_KEY = "" # Will be randomly generated
 
-# MySQL database configuration
-# By default, the web server will try to parse EJABBERD_CONFIG_FILE in order to retreive DB parameters 
-#MYSQL_HOST = ""
-#MYSQL_USER = "root"
-#MYSQL_PASSWORD = ""
-#MYSQL_DB = ""
-#MYSQL_PORT = 3306
+# Database Connection
+DB_TYPE = "sqlite" # sqlite or postgres
+
+#SQLITE
+DB_FILE_SQLITE = "homeserver.db"
+
+#POSTGRES
+DB_HOST = ""
+DB_NAME = ""
+DB_USER= ""
+DB_PASS = ""
+
+MATRIX_DOMAIN = "domain.fr" # server_name in homeserver.yaml
+FEDERATION_PORT = 8448
+SYNAPSE_CONFIG_FILE = "/PATH/TO/homeserver.yaml" # Parse synapse config coming soon
+
 
 # ReCaptcha configuration
 RECAPTCHA_ENABLED = False # True highly recommanded
