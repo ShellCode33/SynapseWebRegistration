@@ -10,7 +10,7 @@ import random
 import string
 import re
 import smtplib
-from email.message import EmailMessage
+from email.mime.text import MIMEText
 
 app = Flask(__name__,
             static_url_path='',
@@ -151,13 +151,12 @@ def approve(username):
 
     # Send email to notify the user (if email specified)
     if user[1] is not None and len(user[1]) > 0:
-        msg = EmailMessage()
-        msg.set_content("Your account %s has been approved on %s" % (username, app.config['MATRIX_DOMAIN']))
+        msg = MIMEText("Your account %s has been approved on %s" % (username, app.config['MATRIX_DOMAIN']))
         msg['Subject'] = 'Account approved'
         msg['From'] = app.config['EMAIL_FROM']
         msg['To'] = user[1]
         s = smtplib.SMTP(app.config['SMTP_HOST'])
-        s.send_message(msg)
+        s.sendmail(app.config["WEBSITE_NAME"], user[1], msg.as_string())
         s.quit()
         print("Email sent to " + user[1])
 
@@ -227,7 +226,7 @@ if __name__ == "__main__":
         print("Please choose an admin password.")
         exit(1)
 
-    parse_synape_yaml()
+    parse_synapse_yaml()
     change_config_values()
 
     if(app.config["DB_TYPE"] == "sqlite"):
@@ -249,7 +248,7 @@ if __name__ == "__main__":
 
     # Create the required table to store users waiting for approval
     cur = db_connection.cursor()
-    cur.execute("CREATE TABLE IF NOT EXISTS users_waiting_approval (username VARCHAR(100) NOT NULL PRIMARY KEY, password VARCHAR(128) NOT NULL, email VARCHAR(200)")
+    cur.execute("CREATE TABLE IF NOT EXISTS users_waiting_approval (username VARCHAR(100) NOT NULL PRIMARY KEY, password VARCHAR(128) NOT NULL, email VARCHAR(200))")
 
 
     print("Running server " + app.config['WEBSITE_NAME'] + "...")
