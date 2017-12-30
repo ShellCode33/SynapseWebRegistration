@@ -75,14 +75,14 @@ def register():
 
             else:
                 # Get the hash from database and store it in the users_waiting_approval table
-                cur.execute("SELECT password_hash FROM users WHERE username = %s", [username])
+                cur.execute("SELECT password_hash FROM users WHERE username LIKE '%%s%", [username])
                 hash = cur.fetchall()[0][0]
                 db.connection.commit()
                 cur.execute("INSERT INTO users_waiting_approval (username, password, email) VALUES (%s, %s, %s)", [username, hash, email])
                 db.connection.commit()
 
                 # Remove the hash from database (user can't login until he's approved by an admin)
-                cur.execute("UPDATE users SET password_hash = '' WHERE username = %s", [username])
+                cur.execute("UPDATE users SET password_hash = '' WHERE username LIKE '%%s'", [username])
                 db.connection.commit()
 
     return json.dumps(error)
@@ -144,7 +144,7 @@ def approve(username):
     db.connection.commit()
 
     # Restore hash in database and remove user from waiting table
-    cur.execute("UPDATE users SET password_hash = %s WHERE username = %s", [user[0], username])
+    cur.execute("UPDATE users SET password_hash = %s WHERE username LIKE '%%s%'", [user[0], username])
     db.connection.commit()
     cur.execute("DELETE FROM users_waiting_approval WHERE username = %s", [username])
     db.connection.commit()
@@ -250,7 +250,7 @@ if __name__ == "__main__":
     # Create the required table to store users waiting for approval
     cur = db_connection.cursor()
     cur.execute("CREATE TABLE IF NOT EXISTS users_waiting_approval (username VARCHAR(100) NOT NULL PRIMARY KEY, password VARCHAR(128) NOT NULL, email VARCHAR(200)")
-
+    db_connection.commit()
 
     print("Running server " + app.config['WEBSITE_NAME'] + "...")
     app.run(host='localhost', port=1337)
