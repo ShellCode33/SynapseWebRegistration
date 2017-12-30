@@ -66,23 +66,27 @@ def register():
             error = "User already in registration process"
         else:
             # Register user using register_new_matrix_user program
-            p = Popen(["register_new_matrix_user", "-c", app.config["SYNAPSE_CONFIG_FILE"], "https://localhost:" + app.config["FEDERATION_PORT"], "-u", username, "-p", password], stdout=PIPE, stdin=PIPE, stderr=PIPE)
+            p = Popen(["register_new_matrix_user", "-c", app.config["SYNAPSE_CONFIG_FILE"], "https://localhost:" + str(app.config["FEDERATION_PORT"]), "-u", username, "-p", password], stdout=PIPE, stdin=PIPE, stderr=PIPE)
             p.communicate(input="no")
-            code = p.returncode
+            code = p.wait()
 
             if code == 1:
                 error = "User already registered"
 
+            elif code == 2:
+                print("Is SYNAPSE_CONFIG_FILE valid in the config file ?")
+                exit(1)
+
             else:
                 # Get the hash from database and store it in the users_waiting_approval table
-                cur.execute("SELECT password_hash FROM users WHERE username LIKE '%%s%", [username])
+                cur.execute("SELECT password_hash FROM users WHERE name LIKE ?", ["%"+username+"%"])
                 hash = cur.fetchall()[0][0]
                 db_connection.commit()
-                cur.execute("INSERT INTO users_waiting_approval (username, password, email) VALUES (%s, %s, %s)", [username, hash, email])
+                cur.execute("INSERT INTO users_waiting_approval (username, password, email) VALUES (?, ?, ?)", [username, hash, email])
                 db_connection.commit()
 
                 # Remove the hash from database (user can't login until he's approved by an admin)
-                cur.execute("UPDATE users SET password_hash = '' WHERE username LIKE '%%s'", [username])
+                cur.execute("UPDATE users SET password_hash = '' WHERE name LIKE ?", ["%"+username+"%"])
                 db_connection.commit()
 
     return json.dumps(error)
@@ -139,14 +143,14 @@ def approve(username):
         return redirect("/admin/login", code=302)
 
     cur = db_connection.cursor()
-    cur.execute("SELECT password, email FROM users_waiting_approval WHERE username = %s", [username])
+    cur.execute("SELECT password, email FROM users_waiting_approval WHERE username = ?", [username])
     user = cur.fetchall()[0]
     db_connection.commit()
 
     # Restore hash in database and remove user from waiting table
-    cur.execute("UPDATE users SET password_hash = %s WHERE username LIKE '%%s%'", [user[0], username])
+    cur.execute("UPDATE users SET password_hash = ? WHERE name LIKE ?", [user[0], "%"+username+"%"])
     db_connection.commit()
-    cur.execute("DELETE FROM users_waiting_approval WHERE username = %s", [username])
+    cur.execute("DELETE FROM users_waiting_approval WHERE username = ?", [username])
     db_connection.commit()
 
     # Send email to notify the user (if email specified)
@@ -170,7 +174,7 @@ def deny(username):
         return redirect("/admin/login", code=302)
 
     cur = db_connection.cursor()
-    cur.execute("DELETE FROM users_waiting_approval WHERE username = %s", [username])
+    cur.execute("DELETE FROM users_waiting_approval WHERE username = ?", [username])
     db_connection.commit()
 
     # Unregister user from database maybe coming soon ?
