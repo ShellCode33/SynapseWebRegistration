@@ -256,6 +256,6 @@ if __name__ == "__main__":
     db_connection.commit()
 
     print("Running server " + app.config['WEBSITE_NAME'] + "...")
-    app.run(host='192.168.1.6', port=1337)
+    app.run(host='localhost', port=1337)
     print("Stopping...")
 
